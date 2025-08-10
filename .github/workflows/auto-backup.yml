@@ -1,0 +1,21 @@
+name: Auto Backup to GitHub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Commit backup
+      run: |
+        git config --global user.name "Auto Backup Bot"
+        git config --global user.email "autobackup@example.com"
+        git add .
+        git commit -m "Auto backup commit by GitHub Actions" || echo "No changes to commit"
+        git push
