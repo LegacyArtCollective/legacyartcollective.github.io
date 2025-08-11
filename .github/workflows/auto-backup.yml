@@ -1,9 +1,9 @@
 name: Daily Backup
 
 on:
-  workflow_dispatch:       # Manual trigger
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'   # Daily at midnight UTC
+    - cron: '0 0 * * *'
   push:
     branches:
       - main
@@ -28,11 +28,11 @@ jobs:
         with:
           server_address: smtp.gmail.com
           server_port: 465
-          username: ${{ secrets.EMAIL_USERNAME }}
+          username: EastMeridianCollections@gmail.com
           password: ${{ secrets.EMAIL_APP_PASSWORD }}
-          from: ${{ secrets.EMAIL_USERNAME }}
-          to: ${{ secrets.EMAIL_RECEIVER }}
-          subject: Daily Backup - ${{ github.repository }}
+          from: EastMeridianCollections@gmail.com
+          to: EastMeridianCollections@gmail.com
+          subject: Daily Backup - LegacyArtCollective/legacyartcollective.github.io
           body: "Backup of repository attached."
           attachments: ${{ env.BACKUP_NAME }}
           secure: true
