@@ -1,8 +1,9 @@
 name: Daily Backup
 
 on:
+  workflow_dispatch:       # This lets you run manually from GitHub UI
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+    - cron: '0 0 * * *'   # Runs daily at midnight UTC
   push:
     branches:
       - main
