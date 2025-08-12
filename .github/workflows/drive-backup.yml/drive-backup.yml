@@ -1,9 +1,9 @@
-name: Google Drive Backup
+name: Google Drive Auto Backup
 
 on:
-  workflow_dispatch:    # Manually trigger anytime
+  workflow_dispatch:       # Manual run support
   schedule:
-    - cron: '0 0 * * *' # Daily at midnight UTC
+    - cron: '0 0 * * *'    # Runs daily at midnight UTC
 
 env:
   BACKUP_NAME: backup-${{ github.repository }}-${{ github.run_id }}.zip
