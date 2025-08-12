@@ -1,12 +1,12 @@
-name: Daily Backup
+name: Weekly Backup
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # Allows manual triggering anytime
   schedule:
-    - cron: '0 0 * * *'
-  push:
-    branches:
-      - main
+    - cron: '0 0 * * 0'    # Runs weekly on Sunday at midnight UTC
+
+env:
+  BACKUP_NAME: backup-${{ github.repository }}-${{ github.run_id }}.zip
 
 jobs:
   backup:
@@ -16,23 +16,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Create timestamp variable
-        id: vars
-        run: echo "BACKUP_NAME=backup-$(date +'%Y-%m-%d_%H-%M-%S').zip" >> $GITHUB_ENV
-
-      - name: Create zip file with timestamp
+      - name: Create zip file
         run: zip -r ${{ env.BACKUP_NAME }} .
+
+      - name: Remove backups older than 7 days from Google Drive
+        uses: gautamkrishnar/clean-drive-folder@v1
+        with:
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
+          age: 7  # deletes files older than 7 days
+
+      - name: Upload new backup to Google Drive
+        uses: intersecato/google-drive-uploader@1.2
+        with:
+          target: ${{ env.BACKUP_NAME }}
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
 
       - name: Send backup email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
-          username: EastMeridianCollections@gmail.com
+          username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_APP_PASSWORD }}
-          from: EastMeridianCollections@gmail.com
-          to: EastMeridianCollections@gmail.com
-          subject: Daily Backup - LegacyArtCollective/legacyartcollective.github.io
+          to: ${{ secrets.EMAIL_RECEIVER }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          subject: Weekly Backup - ${{ github.repository }}
           body: "Backup of repository attached."
           attachments: ${{ env.BACKUP_NAME }}
           secure: true
