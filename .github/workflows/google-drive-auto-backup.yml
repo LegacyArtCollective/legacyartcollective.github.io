@@ -1,9 +1,9 @@
 name: Google Drive Auto Backup
 
 on:
-  workflow_dispatch:    # manual trigger
+  workflow_dispatch:       # manual trigger
   schedule:
-    - cron: '0 2 * * *' # every day at 2:00 AM UTC
+    - cron: '0 2 * * *'    # daily at 2:00 AM UTC
 
 jobs:
   backup:
@@ -32,12 +32,6 @@ jobs:
         TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
         rclone copy backup-$TIMESTAMP.zip gdrive:"${{ secrets.GDRIVE_FOLDER_ID }}" --progress
 
-    - name: Clean backups older than 7 days from Google Drive
-      uses: gautamkrishnar/clean-drive-folder@v1.0.2
-      with:
-        folder_id: ${{ secrets.GDRIVE_FOLDER_ID }}
-        age: 7
-
     - name: Send backup notification email
       uses: dawidd6/action-send-mail@v3
       with:
@@ -48,4 +42,4 @@ jobs:
         to: ${{ secrets.EMAIL_RECEIVER }}
         from: ${{ secrets.EMAIL_USERNAME }}
         subject: "Google Drive Backup Complete - ${{ github.repository }}"
-        body: "Backup uploaded to Google Drive and old backups cleaned."
+        body: "Backup uploaded to Google Drive successfully."
