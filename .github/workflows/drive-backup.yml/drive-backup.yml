@@ -1,0 +1,52 @@
+name: Google Drive Backup
+
+on:
+  workflow_dispatch:    # Manually trigger anytime
+  schedule:
+    - cron: '0 0 * * *' # Daily at midnight UTC
+
+env:
+  BACKUP_NAME: backup-${{ github.repository }}-${{ github.run_id }}.zip
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set current date
+        id: date
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Create ZIP file of repo
+        run: zip -r website-backup-${{ env.DATE }}.zip .
+
+      - name: Remove backups older than 7 days from Google Drive
+        uses: gautamkrishnar/clean-drive-folder@v1
+        with:
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
+          age: 7
+
+      - name: Upload new backup to Google Drive
+        uses: intersecato/google-drive-uploader@1.2
+        with:
+          target: ${{ env.BACKUP_NAME }}
+          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
+
+      - name: Send backup email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_APP_PASSWORD }}
+          to: ${{ secrets.EMAIL_RECEIVER }}
+          from: ${{ secrets.EMAIL_USERNAME }}
+          subject: Daily Backup - ${{ github.repository }}
+          body: "Backup of repository attached."
+          attachments: ${{ env.BACKUP_NAME }}
+          secure: true
