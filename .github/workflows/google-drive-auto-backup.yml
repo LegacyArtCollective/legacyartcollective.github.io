@@ -1,52 +1,51 @@
 name: Google Drive Auto Backup
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:    # manual trigger
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight UTC
-
-env:
-  BACKUP_NAME: backup-${{ github.repository }}-${{ github.run_id }}.zip
+    - cron: '0 2 * * *' # every day at 2:00 AM UTC
 
 jobs:
   backup:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set date
-        id: date
-        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+    - name: Install rclone
+      run: |
+        curl https://rclone.org/install.sh | sudo bash
 
-      - name: Create ZIP
-        run: zip -r ${{ env.BACKUP_NAME }} .
+    - name: Setup rclone config
+      run: |
+        mkdir -p ~/.config/rclone
+        echo "${{ secrets.GDRIVE_CREDENTIALS }}" > ~/.config/rclone/rclone.conf
 
-      - name: Remove backups older than 7 days from Drive
-        uses: gautamkrishnar/clean-drive-folder@v1
-        with:
-          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
-          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
-          age: 7
+    - name: Create timestamped backup zip
+      run: |
+        TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
+        zip -r backup-$TIMESTAMP.zip .
 
-      - name: Upload backup to Google Drive
-        uses: intersecato/google-drive-uploader@1.2
-        with:
-          target: ${{ env.BACKUP_NAME }}
-          credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
-          folder: ${{ secrets.GDRIVE_FOLDER_ID }}
+    - name: Upload backup to Google Drive
+      run: |
+        TIMESTAMP=$(date +'%Y-%m-%d_%H-%M-%S')
+        rclone copy backup-$TIMESTAMP.zip gdrive:"${{ secrets.GDRIVE_FOLDER_ID }}" --progress
 
-      - name: Send email backup
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_APP_PASSWORD }}
-          to: ${{ secrets.EMAIL_RECEIVER }}
-          from: ${{ secrets.EMAIL_USERNAME }}
-          subject: Daily Backup - ${{ github.repository }}
-          body: "Backup of repository attached."
-          attachments: ${{ env.BACKUP_NAME }}
-          secure: true
+    - name: Clean backups older than 7 days from Google Drive
+      uses: gautamkrishnar/clean-drive-folder@v1.0.2
+      with:
+        folder_id: ${{ secrets.GDRIVE_FOLDER_ID }}
+        age: 7
+
+    - name: Send backup notification email
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_APP_PASSWORD }}
+        to: ${{ secrets.EMAIL_RECEIVER }}
+        from: ${{ secrets.EMAIL_USERNAME }}
+        subject: "Google Drive Backup Complete - ${{ github.repository }}"
+        body: "Backup uploaded to Google Drive and old backups cleaned."
